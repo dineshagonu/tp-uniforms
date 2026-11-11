@@ -3,17 +3,18 @@ import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useState, Suspense } from 'react';
 import { useCart } from './CartProvider';
+import PincodePicker from './PincodePicker';
 import { IconPin, IconSearch } from './Icons';
-import { PINCODE_RE, STORE_NAME } from '@/lib/constants';
+import { PINCODE_RE } from '@/lib/constants';
 
 function HeaderInner() {
   const router = useRouter();
   const params = useSearchParams();
-  const { pincode, setPincode } = useCart();
+  const { location, setLocation } = useCart();
   const [q, setQ] = useState('');
   const [editing, setEditing] = useState(false);
-  const [pin, setPin] = useState('');
-  const [pinErr, setPinErr] = useState('');
+  const [draft, setDraft] = useState({});
+  const [err, setErr] = useState('');
 
   useEffect(() => { setQ(params.get('q') || ''); }, [params]);
 
@@ -22,20 +23,24 @@ function HeaderInner() {
     const term = q.trim();
     if (term) router.push('/search?q=' + encodeURIComponent(term));
   };
-  const savePin = (e) => {
-    e.preventDefault();
-    if (!PINCODE_RE.test(pin)) return setPinErr('Enter a valid 6-digit pincode');
-    setPincode(pin); setEditing(false); setPinErr('');
+  const save = () => {
+    if (!PINCODE_RE.test(draft.pincode || '')) return setErr('Enter a valid 6-digit pincode');
+    setLocation(draft); setEditing(false); setErr('');
   };
 
   return (
     <header className="hdr">
       <div className="hdr-top">
-        <Link href="/" className="brand"><span className="brand-mark">T&amp;P</span> {STORE_NAME.replace(/^T&P\s*/, '')}</Link>
+        <Link href="/" className="brand" aria-label="T&P Uniforms home">
+          <img src="/logo-white.png" alt="T&P" className="brand-logo" />
+          <span className="brand-name">Uniforms</span>
+        </Link>
       </div>
-      <button className="pin-bar" onClick={() => { setPin(pincode); setEditing(true); }}>
+      <button className="pin-bar" onClick={() => { setDraft(location || {}); setErr(''); setEditing(true); }}>
         <IconPin size={18} />
-        {pincode ? <><b>{pincode}</b><u>Change</u></> : <u>Add delivery pincode</u>}
+        {location?.pincode
+          ? <span>Deliver to <b>{location.place ? location.place + ', ' : ''}{location.pincode}</b> <u>Change</u></span>
+          : <u>Select delivery location</u>}
       </button>
       <form className="search" onSubmit={onSearch} role="search">
         <IconSearch size={20} />
@@ -44,16 +49,16 @@ function HeaderInner() {
 
       {editing && (
         <div className="modal-back" onClick={() => setEditing(false)}>
-          <form className="modal" onClick={(e) => e.stopPropagation()} onSubmit={savePin}>
-            <h3>Delivery pincode</h3>
-            <input inputMode="numeric" maxLength={6} autoFocus value={pin}
-              onChange={(e) => setPin(e.target.value.replace(/\D/g, ''))} placeholder="e.g. 524412" />
-            {pinErr && <p className="err">{pinErr}</p>}
+          <div className="modal form" onClick={(e) => e.stopPropagation()}>
+            <h3>Delivery location</h3>
+            <PincodePicker value={draft} onChange={setDraft} showDetails={false} />
+            {draft.district && <small className="muted">{[draft.place, draft.mandal, draft.district, draft.state].filter(Boolean).join(', ')}</small>}
+            {err && <p className="err">{err}</p>}
             <div className="row-end">
               <button type="button" className="btn ghost" onClick={() => setEditing(false)}>Cancel</button>
-              <button className="btn">Save</button>
+              <button type="button" className="btn" onClick={save}>Save</button>
             </div>
-          </form>
+          </div>
         </div>
       )}
     </header>

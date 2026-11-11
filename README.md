@@ -19,6 +19,7 @@ Images are resized and converted to WebP in the browser before upload, so pages 
 1. Create a project at supabase.com — choose region **Mumbai (ap-south-1)**.
 2. **SQL Editor → New query** → paste all of `supabase/schema.sql` → **Run**.
    This creates tables, security rules, the `uniforms` image bucket and the 4 categories.
+   **Already ran `schema.sql` earlier?** Also run `supabase/003_profile_details.sql` once (adds profile details, children, district).
 3. **Authentication → Users → Add user** → your admin email + password (tick *Auto confirm*).
 4. Back in SQL Editor run (with your email):
    ```sql
@@ -75,6 +76,10 @@ Local run: `npm install` → copy `.env.example` to `.env.local` → `npm run de
 - Row-level security in Supabase: customers only see their own orders; only admins can edit catalogue or upload images.
 - Payment is confirmed two ways (browser callback + Razorpay webhook) so no paid order is missed.
 - For very large school launches, Supabase Pro ($25/mo) raises connection and email limits; Vercel Hobby is fine to start, move to Pro for commercial use as per Vercel's terms.
+
+## Delivery location & pincode
+- Header and checkout have **Use my current location** (phone GPS → pincode + village via OpenStreetMap) or type a **pincode** → list of villages/towns, mandal, district and state (India Post directory). Results are cached at Vercel.
+- New customers fill a **profile** once after first login: name, mobile, alternate/WhatsApp number, email, address with pincode → village, and optional children (name, boy/girl, school, class). Checkout fills from it automatically.
 
 ## Changing rules
 Edit in Vercel env vars, then redeploy: `SHIPPING_FEE`, `FREE_SHIPPING_ABOVE`, `COD_ENABLED`, `COD_MAX_AMOUNT`.

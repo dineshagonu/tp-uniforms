@@ -43,7 +43,10 @@ export default function Account() {
           <div><h2>My account</h2><small className="muted">{session.user.phone ? '+' + String(session.user.phone).replace(/^\+/, '') : session.user.email}</small></div>
           <button className="btn ghost" onClick={() => sb.auth.signOut()}>Logout</button>
         </div>
-        {isAdmin && <Link href="/admin" className="btn" style={{ marginTop: 12 }}>Open admin panel</Link>}
+        <div className="row-end" style={{ justifyContent: 'flex-start', flexWrap: 'wrap' }}>
+          <Link href="/account/profile" className="btn ghost">My profile &amp; children</Link>
+          {isAdmin && <Link href="/admin" className="btn">Open admin panel</Link>}
+        </div>
       </section>
       <section className="panel">
         <h2>My orders</h2>

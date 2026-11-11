@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { useCart, cartKey } from '@/components/CartProvider';
+import PincodePicker from '@/components/PincodePicker';
 import { getBrowserClient } from '@/lib/supabase';
 import { PHONE_RE, PINCODE_RE, formatINR, itemTypeLabel } from '@/lib/constants';
 
@@ -20,13 +21,14 @@ function loadRazorpay() {
 export default function CartPage() {
   const router = useRouter();
   const sb = getBrowserClient();
-  const { items, subtotal, updateQty, remove, clear, pincode, setPincode, ready } = useCart();
+  const { items, subtotal, updateQty, remove, clear, location, setLocation, ready } = useCart();
   const [session, setSession] = useState(null);
   const [cfg, setCfg] = useState(null);
   const [pay, setPay] = useState('online');
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
-  const [addr, setAddr] = useState({ name: '', phone: '', email: '', line: '', city: '', state: 'Andhra Pradesh', pincode: '' });
+  const [addr, setAddr] = useState({ name: '', phone: '', email: '', line: '' });
+  const [loc, setLoc] = useState({});
 
   useEffect(() => {
     sb.auth.getSession().then(({ data }) => setSession(data.session));
@@ -35,16 +37,31 @@ export default function CartPage() {
       setCfg(c);
       if (!c.onlineEnabled && c.codEnabled) setPay('cod');
     }).catch(() => {});
-    try { const saved = JSON.parse(localStorage.getItem('tp_addr') || 'null'); if (saved) setAddr((a) => ({ ...a, ...saved })); } catch {}
+    try {
+      const saved = JSON.parse(localStorage.getItem('tp_addr') || 'null');
+      if (saved) {
+        setAddr((a) => ({ ...a, name: saved.name || '', phone: saved.phone || '', email: saved.email || '', line: saved.line || '' }));
+        if (saved.pincode) setLoc({ pincode: saved.pincode, place: saved.place || '', mandal: saved.mandal || '', district: saved.district || '', state: saved.state || '' });
+      }
+    } catch {}
     return () => sub.subscription.unsubscribe();
   }, [sb]);
 
-  useEffect(() => { if (pincode && !addr.pincode) setAddr((a) => ({ ...a, pincode })); }, [pincode]); // eslint-disable-line
+  useEffect(() => { if (location?.pincode && !loc.pincode) setLoc(location); }, [location]); // eslint-disable-line
   useEffect(() => {
     const u = session?.user;
     if (!u) return;
     const ph = String(u.phone || '').replace(/\D/g, '').slice(-10);
     setAddr((a) => ({ ...a, phone: a.phone || ph, email: a.email || u.email || '' }));
+    // fill from saved profile
+    sb.from('profiles').select('*').eq('id', u.id).maybeSingle().then(({ data: p }) => {
+      if (!p) return;
+      setAddr((a) => ({
+        name: a.name || p.full_name || '', phone: a.phone || String(p.phone || '').replace(/\D/g, '').slice(-10),
+        email: a.email || p.email || '', line: a.line || p.address_line || '',
+      }));
+      if (p.pincode) setLoc((l) => (l.pincode ? l : { pincode: p.pincode, place: p.village || '', mandal: p.mandal || '', district: p.district || '', state: p.state || '' }));
+    });
   }, [session]); // eslint-disable-line
 
   const shipping = !cfg || subtotal === 0 ? 0
@@ -56,15 +73,16 @@ export default function CartPage() {
   async function placeOrder(e) {
     e.preventDefault();
     setErr('');
-    if (!addr.name || !addr.line || !addr.city || !addr.state) return setErr('Please fill the full delivery address.');
+    if (!addr.name || !addr.line) return setErr('Please fill your name and house / street.');
+    if (!loc.place || !loc.state) return setErr('Select your village / town for the pincode.');
     if (!PHONE_RE.test(addr.phone)) return setErr('Enter a valid 10-digit mobile number.');
-    if (!PINCODE_RE.test(addr.pincode)) return setErr('Enter a valid 6-digit pincode.');
+    if (!PINCODE_RE.test(loc.pincode || '')) return setErr('Enter a valid 6-digit pincode.');
     if (pay === 'cod' && codTooHigh) return setErr(`Cash on Delivery is available up to ${formatINR(cfg.codMaxAmount)}.`);
 
     setBusy(true);
     try {
-      localStorage.setItem('tp_addr', JSON.stringify({ ...addr }));
-      setPincode(addr.pincode);
+      localStorage.setItem('tp_addr', JSON.stringify({ ...addr, ...loc }));
+      setLocation(loc);
       const { data: { session: s } } = await sb.auth.getSession();
       if (!s) { setBusy(false); return router.push('/login?next=/cart'); }
 
@@ -72,7 +90,8 @@ export default function CartPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + s.access_token },
         body: JSON.stringify({
-          paymentMethod: pay, address: addr,
+          paymentMethod: pay,
+          address: { ...addr, city: loc.place + (loc.mandal ? ', ' + loc.mandal + ' Mandal' : ''), district: loc.district, state: loc.state, pincode: loc.pincode },
           items: items.map((i) => ({ productId: i.productId, qty: i.qty, size: i.size, className: i.className })),
         }),
       });
@@ -158,13 +177,8 @@ export default function CartPage() {
         <input placeholder="Mobile number" inputMode="numeric" maxLength={10} value={addr.phone}
           onChange={(e) => setAddr((a) => ({ ...a, phone: e.target.value.replace(/\D/g, '') }))} autoComplete="tel" />
         <input placeholder="Email (optional)" type="email" value={addr.email} onChange={set('email')} autoComplete="email" />
-        <textarea placeholder="House no, street, village / area, landmark" rows={3} value={addr.line} onChange={set('line')} />
-        <div className="two">
-          <input placeholder="City / Town" value={addr.city} onChange={set('city')} />
-          <input placeholder="Pincode" inputMode="numeric" maxLength={6} value={addr.pincode}
-            onChange={(e) => setAddr((a) => ({ ...a, pincode: e.target.value.replace(/\D/g, '') }))} />
-        </div>
-        <input placeholder="State" value={addr.state} onChange={set('state')} />
+        <textarea placeholder="House no, street, landmark" rows={3} value={addr.line} onChange={set('line')} />
+        <PincodePicker value={loc} onChange={setLoc} />
 
         <h2>Payment</h2>
         {cfg?.onlineEnabled && (

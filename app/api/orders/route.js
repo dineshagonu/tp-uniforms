@@ -23,7 +23,7 @@ export async function POST(req) {
 
   const a = {
     name: clean(address.name, 80), phone: clean(address.phone, 10), email: clean(address.email || user.email || '', 120),
-    line: clean(address.line, 300), city: clean(address.city, 60), state: clean(address.state, 60),
+    line: clean(address.line, 300), city: clean(address.city, 120), district: clean(address.district, 60), state: clean(address.state, 60),
     pincode: clean(address.pincode, 6),
   };
   if (!a.name || !a.line || !a.city || !a.state) return bad('Please fill the full delivery address.');
@@ -77,7 +77,7 @@ export async function POST(req) {
     .from('orders')
     .insert({
       user_id: user.id, customer_name: a.name, phone: a.phone, email: a.email || null,
-      address: a.line, city: a.city, state: a.state, pincode: a.pincode,
+      address: a.line, city: a.city, district: a.district || null, state: a.state, pincode: a.pincode,
       subtotal, shipping, total, payment_method: paymentMethod,
       payment_status: paymentMethod === 'cod' ? 'cod' : 'pending',
       status: 'placed',

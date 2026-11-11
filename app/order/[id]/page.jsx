@@ -62,7 +62,7 @@ export default function OrderPage() {
       </section>
       <section className="panel">
         <h2>Delivering to</h2>
-        <p>{order.customer_name} · {order.phone}<br />{order.address}, {order.city}, {order.state} – {order.pincode}</p>
+        <p>{order.customer_name} · {order.phone}<br />{order.address}, {order.city}{order.district ? ', ' + order.district + ' Dt' : ''}, {order.state} – {order.pincode}</p>
       </section>
       <Link href="/" className="btn ghost">Continue shopping</Link>
     </div>

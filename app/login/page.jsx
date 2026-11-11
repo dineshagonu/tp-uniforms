@@ -3,6 +3,7 @@ import { Suspense, useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { getBrowserClient } from '@/lib/supabase';
 import { PHONE_RE } from '@/lib/constants';
+import { profileComplete } from '@/lib/profile';
 
 // Which login tabs to show; first one opens by default.
 // Vercel env NEXT_PUBLIC_LOGIN_METHODS: "email,mobile" | "mobile,email" | "mobile" | "email"
@@ -170,7 +171,14 @@ function LoginInner() {
   const next = useSearchParams().get('next') || '/account';
   const sb = getBrowserClient();
   const [method, setMethod] = useState(METHODS[0]);
-  const onDone = () => router.replace(next);
+  // New users (or incomplete profiles) fill their details once before continuing
+  const onDone = async () => {
+    const { data: { session } } = await sb.auth.getSession();
+    const { data: p } = session
+      ? await sb.from('profiles').select('full_name, phone, address_line, pincode, village').eq('id', session.user.id).maybeSingle()
+      : { data: null };
+    router.replace(profileComplete(p) ? next : '/account/profile?onboard=1&next=' + encodeURIComponent(next));
+  };
 
   return (
     <div className="page">

@@ -321,7 +321,7 @@ function OrdersTab({ sb }) {
             </button>
             {open === o.id && (
               <div className="order-detail">
-                <p>📞 <a href={'tel:' + o.phone}>{o.phone}</a>{o.email ? ' · ' + o.email : ''}<br />{o.address}, {o.city}, {o.state} – {o.pincode}</p>
+                <p>📞 <a href={'tel:' + o.phone}>{o.phone}</a>{o.email ? ' · ' + o.email : ''}<br />{o.address}, {o.city}{o.district ? ', ' + o.district + ' Dt' : ''}, {o.state} – {o.pincode}</p>
                 <table><tbody>
                   {o.order_items.map((it) => (
                     <tr key={it.id}><td>{it.product_name}<br /><small>{it.school_name}{it.class_name ? ' · ' + it.class_name : ''}{it.size ? ' · ' + it.size : ''}</small></td>

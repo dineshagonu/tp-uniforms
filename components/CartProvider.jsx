@@ -6,13 +6,13 @@ export const cartKey = (i) => `${i.productId}|${i.size || ''}|${i.className || '
 
 export function CartProvider({ children }) {
   const [items, setItems] = useState([]);
-  const [pincode, setPincodeState] = useState('');
+  const [location, setLocationState] = useState({});
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
     try {
       setItems(JSON.parse(localStorage.getItem('tp_cart') || '[]'));
-      setPincodeState(localStorage.getItem('tp_pincode') || '');
+      setLocationState(JSON.parse(localStorage.getItem('tp_loc') || '{}'));
     } catch {}
     setReady(true);
   }, []);
@@ -35,16 +35,16 @@ export function CartProvider({ children }) {
   }, []);
   const remove = useCallback((k) => setItems((prev) => prev.filter((p) => cartKey(p) !== k)), []);
   const clear = useCallback(() => setItems([]), []);
-  const setPincode = useCallback((p) => {
-    setPincodeState(p);
-    try { localStorage.setItem('tp_pincode', p); } catch {}
+  const setLocation = useCallback((loc) => {
+    setLocationState(loc || {});
+    try { localStorage.setItem('tp_loc', JSON.stringify(loc || {})); } catch {}
   }, []);
 
   const value = useMemo(() => {
     const count = items.reduce((s, i) => s + i.qty, 0);
     const subtotal = items.reduce((s, i) => s + i.qty * Number(i.price), 0);
-    return { items, count, subtotal, ready, add, updateQty, remove, clear, pincode, setPincode };
-  }, [items, ready, add, updateQty, remove, clear, pincode, setPincode]);
+    return { items, count, subtotal, ready, add, updateQty, remove, clear, location, setLocation, pincode: location.pincode || '' };
+  }, [items, ready, add, updateQty, remove, clear, location, setLocation]);
 
   return <CartCtx.Provider value={value}>{children}</CartCtx.Provider>;
 }
